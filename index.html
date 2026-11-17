@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulačka a vizuální plánovač ALS – 10 půdních bloků</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        forest: {
+                            950: '#12211B',
+                            900: '#1D332A',
+                            800: '#2C4A3E',
+                            700: '#385C4E',
+                            600: '#4A6B5D',
+                            100: '#E8F0EC',
+                            50: '#F4F8F6',
+                        },
+                        sand: {
+                            50: '#FEFCF5',
+                            100: '#FDF6E2',
+                            200: '#F9EBC3',
+                            300: '#EED693',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F3F5F4;
+            color: #1F2937;
+        }
+        .editable-input {
+            background-color: #FDF6E2;
+            border: 1.5px solid #E5D4A1;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        .editable-input:focus {
+            background-color: #FFFDF7;
+            border-color: #2C4A3E;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(44, 74, 62, 0.16);
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: #FFFFFF !important; }
+            .print-shadow-none { box-shadow: none !important; border: 1px solid #D1D5DB !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Horní hlavička -->
+    <header class="bg-forest-800 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2.5">
+                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-forest-600 text-white shadow-inner">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m0-18c-3.5 2-6 5.5-6 9.5 0 2.5 2.5 4.5 6 4.5m0-14c3.5 2 6 5.5 6 9.5 0 2.5-2.5 4.5-6 4.5" />
+                        </svg>
+                    </span>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Kalkulačka a plánovač ALS – 10 půdních bloků</h1>
+                </div>
+                <p class="text-forest-100 text-xs sm:text-sm mt-1">
+                    Přesný výpočet na stromek (100 ks/ha), automatické vyrovnání zbytků na čistý spon a měřítkové schéma řad
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="exportAllToXlsx()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-700 hover:bg-forest-600 text-white text-xs sm:text-sm font-medium border border-forest-600 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export Excel (.xlsx)
+                </button>
+                <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-700 hover:bg-forest-600 text-white text-xs sm:text-sm font-medium border border-forest-600 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Tisk / PDF
+                </button>
+                <button onclick="openResetModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-900/60 hover:bg-red-900/70 text-forest-100 hover:text-white text-xs sm:text-sm font-medium transition cursor-pointer" title="Obnovit výchozí nastavení všech bloků">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Lišta 10 půdních bloků -->
+        <div class="bg-forest-900/70 border-t border-forest-700/60">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
+                <div id="block-tabs" class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-1.5"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast kontejner -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+    <!-- Potvrzovací okno pro reset -->
+    <div id="reset-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200">
+            <h3 class="text-lg font-bold text-gray-900">Obnovit výchozí data všech 10 bloků?</h3>
+            <p class="text-sm text-gray-600 mt-2">
+                Všechny vaše vlastní změny budou přepsány původním zadáním (včetně předvyplněných 5 trojřadů na bloku <em>U nového nádraží</em>).
+            </p>
+            <div class="flex justify-end gap-2.5 mt-6">
+                <button onclick="closeResetModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition cursor-pointer">
+                    Zrušit
+                </button>
+                <button onclick="executeReset()" class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer">
+                    Ano, obnovit vše
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hlavní pracovní plocha -->
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
+
+        <!-- SEKCE 1 & 2: Parametry bloku a Přesný cíl -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-gray-200/90 p-5 print-shadow-none">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-forest-800 text-white text-xs font-bold flex items-center justify-center">1</span>
+                        <h2 class="font-bold text-gray-800 text-base sm:text-lg">Parametry půdního bloku</h2>
+                    </div>
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-sand-100 text-amber-900 border border-sand-300 no-print">
+                        Žlutá pole jsou editovatelná
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label for="input-block-name" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                            Název půdního bloku
+                        </label>
+                        <input id="input-block-name" type="text" oninput="updateBlockMeta('name', this.value)"
+                            class="editable-input w-full rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-900">
+                    </div>
+
+                    <div>
+                        <label for="input-block-area" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                            Výměra bloku (ha)
+                        </label>
+                        <input id="input-block-area" type="number" step="0.01" min="0.01" oninput="updateBlockMeta('area', this.value)"
+                            class="editable-input w-full rounded-xl px-3.5 py-2.5 text-sm font-bold text-gray-900">
+                    </div>
+
+                    <div>
+                        <label for="input-block-spacing" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                            Spon stromů v řadě (m)
+                        </label>
+                        <input id="input-block-spacing" type="number" step="0.1" min="0.2" oninput="updateBlockMeta('spacing', this.value)"
+                            class="editable-input w-full rounded-xl px-3.5 py-2.5 text-sm font-bold text-gray-900">
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                    <span>Cílová hustota ALS: <strong class="text-gray-700">100 stromů / ha</strong> (nulová tolerance odchylky)</span>
+                    <span>Přesný cílový počet stromů: <strong id="display-min-trees" class="text-forest-800 text-sm font-bold">0 ks</strong></span>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 bg-gradient-to-br from-forest-800 to-forest-950 text-white rounded-2xl shadow-md p-5 flex flex-col justify-between print-shadow-none">
+                <div>
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-forest-100 bg-forest-700/80 px-2.5 py-1 rounded-lg">
+                            2. Hlavní cíl pro blok
+                        </span>
+                        <span id="header-status-pill" class="text-xs font-bold px-3 py-1 rounded-full bg-amber-300 text-amber-950">
+                            Rozpracováno
+                        </span>
+                    </div>
+                    <p class="text-sm text-forest-100 mt-3">Nutná délka všech jednotlivých řad celkem:</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span id="display-required-length" class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">0,0</span>
+                        <span class="text-xl font-semibold text-forest-100">m</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="flex justify-between text-xs font-medium text-forest-100 mb-1.5">
+                        <span>Navrženo: <strong id="display-current-length" class="text-white">0,0 m</strong> (<span id="display-current-trees">0</span> / <span id="display-target-trees-inline">0</span> ks)</span>
+                        <span id="display-percent">0 %</span>
+                    </div>
+                    <div class="w-full h-3 bg-forest-950 rounded-full overflow-hidden p-0.5 border border-forest-700/60">
+                        <div id="progress-bar" class="h-full rounded-full bg-emerald-400 transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEKCE 3: Vizuální měřítkové schéma řad (HTML5 Canvas) -->
+        <section class="bg-white rounded-2xl shadow-sm border border-gray-200/90 p-5 print-shadow-none">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 pb-3.5 mb-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-forest-800 text-white text-xs font-bold flex items-center justify-center">3</span>
+                        <h2 class="font-bold text-gray-800 text-base sm:text-lg">Vizuální měřítkové schéma linií a rozestupů stromků</h2>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Jednotné měřítko pro všechny řady na bloku: každý bod odpovídá skutečné pozici stromku podle sponu a vpravo je uveden přesný počet stromků v dané řadě.
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-2 no-print">
+                    <button onclick="downloadSchemaPNG()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-50 hover:bg-forest-100 text-forest-800 border border-forest-200 text-xs font-semibold transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Stáhnout schéma (PNG)
+                    </button>
+                </div>
+            </div>
+
+            <div id="schema-wrapper" class="w-full overflow-x-auto bg-forest-50/50 rounded-xl border border-gray-200/80 p-3 sm:p-4">
+                <canvas id="als-schema-canvas" class="block w-full min-w-[720px] rounded-xl bg-[#FAFDFB]"></canvas>
+                <div id="schema-empty-state" class="hidden py-10 text-center text-gray-500 text-sm">
+                    <p class="font-medium text-gray-700">Zatím není co vykreslit</p>
+                    <p class="text-xs mt-1">Zadej délku alespoň jedné linie a zde se zobrazí měřítkový náčrt řad s počty stromků.</p>
+                </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                <div class="flex items-center gap-1.5">
+                    <span class="inline-block w-6 h-1.5 rounded-full bg-forest-700"></span>
+                    <span>Stromová řada (každý bílý bod = 1 stromek v reálném měřítku)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-forest-800 text-white font-bold text-[11px]">Řada 1: 40 ks</span>
+                    <span>Rovnoměrný počet stromků</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[11px]">Řada 1: 41 ks (+1)</span>
+                    <span>Řada o 1 stromek (1 spon) delší než sousední řada v pásu</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEKCE 4 & 5: Sestavení linií + Chytrý pomocník & Automatické vyrovnání -->
+        <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+            <!-- Tabulka linií -->
+            <div class="xl:col-span-8 bg-white rounded-2xl shadow-sm border border-gray-200/90 p-5 print-shadow-none">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3.5 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-forest-800 text-white text-xs font-bold flex items-center justify-center">4</span>
+                        <h2 class="font-bold text-gray-800 text-base sm:text-lg">Sestavení linií na půdním bloku</h2>
+                    </div>
+
+                    <button onclick="addNewLine('Trojřad', 0)" class="no-print inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-800 hover:bg-forest-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        + Přidat linii
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                <th class="py-2.5 px-2 w-8">#</th>
+                                <th class="py-2.5 px-2 min-w-[125px]">Označení linie</th>
+                                <th class="py-2.5 px-2 min-w-[125px]">Uspořádání</th>
+                                <th class="py-2.5 px-2 min-w-[115px]">Délka v poli (m)</th>
+                                <th class="py-2.5 px-2 text-right">Řady celkem</th>
+                                <th class="py-2.5 px-2 text-right">Stromků</th>
+                                <th class="py-2.5 px-2 min-w-[180px]">Rozpis po řadách & spon</th>
+                                <th class="py-2.5 px-1 w-9 no-print"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="lines-table-body" class="divide-y divide-gray-100 text-sm"></tbody>
+                        <tfoot id="lines-table-foot" class="border-t-2 border-gray-300 bg-gray-50/80 font-semibold text-sm"></tfoot>
+                    </table>
+                </div>
+
+                <!-- Souhrnný stavový banner -->
+                <div id="status-banner" class="mt-4 rounded-xl p-4 border transition-all"></div>
+            </div>
+
+            <!-- Pravý panel: Automatické vyrovnání všech řad + Pomocník pro dopočet / úpravu -->
+            <div class="xl:col-span-4 space-y-5 no-print">
+
+                <!-- Karta hlavního automatického vyrovnávače -->
+                <div id="auto-align-box" class="bg-gradient-to-br from-forest-50 to-white rounded-2xl shadow-sm border-2 border-forest-300 p-5">
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-7 h-7 rounded-xl bg-forest-800 text-white flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </span>
+                        <div>
+                            <h3 class="font-bold text-forest-950 text-sm sm:text-base">Vyrovnání všech řad jedním klikem</h3>
+                            <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                                Zarovná všechny existující linie na čistý násobek sponu (stejný počet stromků v každé řadě pásu) a zároveň dorovná zbytek tak, aby celkový počet seděl přesně na <strong>0 ks rozdílu</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button onclick="autoBalanceAllLines()"
+                        class="mt-3.5 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-forest-800 hover:bg-forest-700 active:bg-forest-900 text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Automaticky vyrovnat všechny linie na spon a přesný počet stromků
+                    </button>
+                </div>
+
+                <!-- Karta Pomocníka pro dopočet / úpravu -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200/90 p-5">
+                    <div class="flex items-center gap-2 border-b border-gray-100 pb-3 mb-3">
+                        <span id="helper-badge-num" class="w-6 h-6 rounded-lg bg-amber-600 text-white text-xs font-bold flex items-center justify-center">5</span>
+                        <h2 id="helper-title" class="font-bold text-gray-800 text-base">Pomocník pro dopočet / úpravu</h2>
+                    </div>
+
+                    <p id="helper-subtitle" class="text-xs text-gray-600 leading-relaxed mb-4"></p>
+
+                    <div id="helper-cards" class="space-y-3"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // =========================================================================
+        // 1. VÝCHOZÍ DATA PRO 10 PŮDNÍCH BLOKŮ
+        // =========================================================================
+        const STORAGE_KEY = 'als_visual_planner_v2';
+
+        const DEFAULT_BLOCKS = [
+            { id: 1, name: 'Neuslužice vrch', area: 1.89, spacing: 2.0, lines: [] },
+            { id: 2, name: 'Neuslužice 2802,4', area: 0.81, spacing: 2.0, lines: [] },
+            { id: 3, name: 'Nad úvozem', area: 0.97, spacing: 1.0, lines: [] },
+            {
+                id: 4,
+                name: 'U nového nádraží',
+                area: 12.24,
+                spacing: 1.5,
+                lines: [
+                    { id: 'l4-1', name: 'Linie 1', type: 'Trojřad', length: 82 },
+                    { id: 'l4-2', name: 'Linie 2', type: 'Trojřad', length: 200 },
+                    { id: 'l4-3', name: 'Linie 3', type: 'Trojřad', length: 160 },
+                    { id: 'l4-4', name: 'Linie 4', type: 'Trojřad', length: 70 },
+                    { id: 'l4-5', name: 'Linie 5', type: 'Trojřad', length: 100 }
+                ]
+            },
+            { id: 5, name: 'Za pilou', area: 4.44, spacing: 2.0, lines: [] },
+            { id: 6, name: 'Před barákem', area: 4.91, spacing: 1.5, lines: [] },
+            { id: 7, name: 'Blok 7', area: 5.00, spacing: 4.0, lines: [] },
+            { id: 8, name: 'Blok 8', area: 5.00, spacing: 4.0, lines: [] },
+            { id: 9, name: 'Blok 9', area: 5.00, spacing: 4.0, lines: [] },
+            { id: 10, name: 'Blok 10', area: 5.00, spacing: 4.0, lines: [] }
+        ];
+
+        let state = {
+            activeBlockIndex: 3,
+            blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS))
+        };
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length === 10) {
+                        state = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('Nepodařilo se načíst uložený stav:', e);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.warn('Nepodařilo se uložit stav:', e);
+            }
+        }
+
+        // =========================================================================
+        // 2. MATEMATICKÉ FUNKCE A KONTROLA KOMPATIBILITY SE SPONEM
+        // =========================================================================
+        function getRowCount(type) {
+            if (type === 'Trojřad') return 3;
+            if (type === 'Dvouřad') return 2;
+            return 1;
+        }
+
+        function distributeTreesAcrossRows(totalTrees, rowCount) {
+            if (totalTrees <= 0) return Array(rowCount).fill(0);
+            const base = Math.floor(totalTrees / rowCount);
+            const remainder = totalTrees % rowCount;
+            const res = [];
+            for (let i = 0; i < rowCount; i++) {
+                res.push(base + (i < remainder ? 1 : 0));
+            }
+            return res;
+        }
+
+        function isLengthCompatibleWithSpacing(length, spacing) {
+            if (length <= 0 || spacing <= 0) return true;
+            const nearest = Math.round(length / spacing) * spacing;
+            return Math.abs(length - nearest) < 0.001;
+        }
+
+        function roundMeters(val) {
+            return Math.round((val + Number.EPSILON) * 100) / 100;
+        }
+
+        function calculateBlockStats(block) {
+            const area = Math.max(0, Number(block.area) || 0);
+            const spacing = Math.max(0.1, Number(block.spacing) || 1.0);
+
+            const requiredTrees = Math.ceil(area * 100 - 1e-9);
+            const requiredRowLength = roundMeters(requiredTrees * spacing);
+
+            let totalPhysicalLength = 0;
+            let totalRowLength = 0;
+            let totalTrees = 0;
+
+            const computedLines = block.lines.map((line, idx) => {
+                const rows = getRowCount(line.type);
+                const len = Math.max(0, Number(line.length) || 0);
+                const effectiveRowLength = roundMeters(len * rows);
+                const trees = len > 0 ? Math.ceil((effectiveRowLength - 1e-9) / spacing) : 0;
+                const rowTrees = distributeTreesAcrossRows(trees, rows);
+                const compatible = isLengthCompatibleWithSpacing(len, spacing);
+
+                // Nejbližší čistý násobek sponu
+                const nearestUnits = Math.max(1, Math.round(len / spacing));
+                const nearestCleanLength = len > 0 ? roundMeters(nearestUnits * spacing) : 0;
+
+                totalPhysicalLength += len;
+                totalRowLength += effectiveRowLength;
+                totalTrees += trees;
+
+                return {
+                    ...line,
+                    index: idx + 1,
+                    rows,
+                    length: len,
+                    effectiveRowLength,
+                    trees,
+                    rowTrees,
+                    compatible,
+                    nearestCleanLength,
+                    hasUnevenRows: new Set(rowTrees).size > 1
+                };
+            });
+
+            totalPhysicalLength = roundMeters(totalPhysicalLength);
+            totalRowLength = roundMeters(totalRowLength);
+
+            const diff = requiredTrees - totalTrees; // > 0 chybí stromky, < 0 přebývají stromky, === 0 přesně
+            const missingTrees = Math.max(0, diff);
+            const excessTrees = Math.max(0, -diff);
+            const missingRowLength = roundMeters(missingTrees * spacing);
+            const excessRowLength = roundMeters(excessTrees * spacing);
+
+            let status = 'under';
+            if (diff === 0 && requiredTrees > 0) status = 'exact';
+            else if (diff < 0) status = 'over';
+
+            const allLinesClean = computedLines.every(l => l.length === 0 || l.compatible);
+
+            return {
+                area,
+                spacing,
+                requiredTrees,
+                requiredRowLength,
+                computedLines,
+                totalPhysicalLength,
+                totalRowLength,
+                totalTrees,
+                diff,
+                missingTrees,
+                excessTrees,
+                missingRowLength,
+                excessRowLength,
+                status,
+                allLinesClean,
+                density: area > 0 ? totalTrees / area : 0
+            };
+        }
+
+        function computeExactLineLengthForTrees(desiredTrees, rows, spacing) {
+            if (desiredTrees <= 0) return 0;
+            const rawLen = (desiredTrees * spacing) / rows;
+            const rounded1 = Math.round(rawLen * 10) / 10;
+            if (rounded1 > 0 && Math.ceil((rounded1 * rows - 1e-9) / spacing) === desiredTrees) {
+                return rounded1;
+            }
+            const ceil1 = Math.ceil((rawLen - 1e-9) * 10) / 10;
+            if (ceil1 > 0 && Math.ceil((ceil1 * rows - 1e-9) / spacing) === desiredTrees) {
+                return ceil1;
+            }
+            return Math.ceil((rawLen - 1e-9) * 100) / 100;
+        }
+
+        function fmt(num, decimals = 1) {
+            return Number(num).toLocaleString('cs-CZ', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function fmtSmart(num) {
+            if (Math.abs(num - Math.round(num)) < 0.001) {
+                return Math.round(num).toLocaleString('cs-CZ');
+            }
+            return Number(num).toLocaleString('cs-CZ', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // =========================================================================
+        // 3. VYKRESLOVÁNÍ UI BEZ ZTRÁTY FOCUSU PŘI PSANÍ
+        // =========================================================================
+        function renderAll() {
+            const activeBlock = state.blocks[state.activeBlockIndex];
+            const stats = calculateBlockStats(activeBlock);
+
+            renderTabs();
+            renderBlockHeaderAndGoals(activeBlock, stats);
+            renderLinesTable(activeBlock, stats);
+            renderHelperPanel(activeBlock, stats);
+            renderCanvasSchema(activeBlock, stats);
+
+            saveState();
+        }
+
+        /**
+         * Živá aktualizace při psaní do inputu v řádku tabulky:
+         * Nepřepisuje existující <input> prvky v tabulce, takže uživatel neztrácí focus ani kurzor.
+         */
+        function renderLiveUpdatesOnly() {
+            const activeBlock = state.blocks[state.activeBlockIndex];
+            const stats = calculateBlockStats(activeBlock);
+
+            renderTabs();
+            renderBlockHeaderAndGoals(activeBlock, stats);
+            updateLinesTableComputedCells(stats);
+            renderHelperPanel(activeBlock, stats);
+            renderCanvasSchema(activeBlock, stats);
+
+            saveState();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('block-tabs');
+            container.innerHTML = state.blocks.map((block, idx) => {
+                const s = calculateBlockStats(block);
+                const isActive = idx === state.activeBlockIndex;
+
+                let dot = '<span class="w-2 h-2 rounded-full bg-gray-400/70"></span>';
+                if (block.lines.length > 0) {
+                    if (s.status === 'exact') {
+                        dot = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>';
+                    } else if (s.status === 'over') {
+                        dot = '<span class="w-2 h-2 rounded-full bg-red-400"></span>';
+                    } else {
+                        dot = '<span class="w-2 h-2 rounded-full bg-amber-400"></span>';
+                    }
+                }
+
+                return `
+                    <button onclick="selectBlock(${idx})"
+                        class="text-left px-2.5 py-2 rounded-xl transition flex flex-col justify-between cursor-pointer border ${
+                            isActive
+                                ? 'bg-white text-forest-900 border-white shadow-sm font-bold'
+                                : 'bg-forest-800/70 hover:bg-forest-700/80 text-forest-100 border-forest-700/50 font-medium'
+                        }">
+                        <div class="flex items-center justify-between w-full gap-1">
+                            <span class="text-[10px] uppercase tracking-wider opacity-75">Blok ${block.id}</span>
+                            ${dot}
+                        </div>
+                        <span class="text-xs truncate w-full mt-0.5">${escapeHtml(block.name)}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderBlockHeaderAndGoals(block, stats) {
+            const nameInput = document.getElementById('input-block-name');
+            const areaInput = document.getElementById('input-block-area');
+            const spacingInput = document.getElementById('input-block-spacing');
+
+            if (document.activeElement !== nameInput) nameInput.value = block.name;
+            if (document.activeElement !== areaInput) areaInput.value = block.area;
+            if (document.activeElement !== spacingInput) spacingInput.value = block.spacing;
+
+            document.getElementById('display-min-trees').textContent = `${stats.requiredTrees.toLocaleString('cs-CZ')} ks`;
+            document.getElementById('display-required-length').textContent = fmt(stats.requiredRowLength, 1);
+            document.getElementById('display-current-length').textContent = `${fmt(stats.totalRowLength, 1)} m`;
+            document.getElementById('display-current-trees').textContent = stats.totalTrees.toLocaleString('cs-CZ');
+            document.getElementById('display-target-trees-inline').textContent = stats.requiredTrees.toLocaleString('cs-CZ');
+
+            const pct = stats.requiredTrees > 0 ? Math.min(100, Math.round((stats.totalTrees / stats.requiredTrees) * 100)) : 0;
+            const rawPct = stats.requiredTrees > 0 ? Math.round((stats.totalTrees / stats.requiredTrees) * 100) : 0;
+
+            document.getElementById('display-percent').textContent = `${rawPct} %`;
+            const bar = document.getElementById('progress-bar');
+            bar.style.width = `${pct}%`;
+
+            const pill = document.getElementById('header-status-pill');
+            if (stats.status === 'exact') {
+                bar.className = 'h-full rounded-full bg-emerald-400 transition-all duration-300';
+                pill.className = 'text-xs font-bold px-3 py-1 rounded-full bg-emerald-400 text-emerald-950';
+                pill.textContent = `SPLNĚNO PŘESNĚ (${stats.totalTrees} ks)`;
+            } else if (stats.status === 'over') {
+                bar.className = 'h-full rounded-full bg-red-500 transition-all duration-300';
+                pill.className = 'text-xs font-bold px-3 py-1 rounded-full bg-red-500 text-white';
+                pill.textContent = `PŘEKROČENO (+${stats.excessTrees} ks)`;
+            } else {
+                bar.className = 'h-full rounded-full bg-amber-400 transition-all duration-300';
+                pill.className = 'text-xs font-bold px-3 py-1 rounded-full bg-amber-300 text-amber-950';
+                pill.textContent = `Chybí ${stats.missingTrees} ks (${fmt(stats.missingRowLength, 1)} m)`;
+            }
+        }
+
+        function buildRowBreakdownHtml(line, spacing, idx) {
+            if (line.length <= 0) {
+                return `<span class="text-xs text-gray-400">Zadej délku linie</span>`;
+            }
+
+            const maxInLine = Math.max(...line.rowTrees);
+            const minInLine = Math.min(...line.rowTrees);
+
+            const badges = line.rowTrees.map((cnt, rIdx) => {
+                const isExtra = line.hasUnevenRows && cnt === maxInLine && maxInLine > minInLine;
+                return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold ${
+                    isExtra
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-forest-50 text-forest-800 border border-forest-200'
+                }" title="Řada ${rIdx + 1}">${cnt} ks</span>`;
+            }).join('<span class="text-gray-400 text-xs mx-0.5">+</span>');
+
+            let html = `<div class="flex flex-wrap items-center gap-0.5">${badges}</div>`;
+
+            if (!line.compatible) {
+                html += `
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-amber-800">
+                        <span>Nevychází na spon ${fmtSmart(spacing)} m.</span>
+                        <button onclick="alignSingleLineToSpacing(${idx}, ${line.nearestCleanLength})"
+                            class="no-print underline font-semibold text-forest-800 hover:text-forest-600 cursor-pointer">
+                            Zarovnat na ${fmtSmart(line.nearestCleanLength)} m
+                        </button>
+                    </div>
+                `;
+            } else {
+                html += `<div class="mt-0.5 text-[11px] text-emerald-700 font-medium">Čistý spon (${fmtSmart(spacing)} m)</div>`;
+            }
+
+            return html;
+        }
+
+        function renderLinesTable(block, stats) {
+            const tbody = document.getElementById('lines-table-body');
+
+            if (stats.computedLines.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-8 px-4 text-center text-gray-500">
+                            <p class="font-medium text-gray-700">Zatím zde nemáš zadanou žádnou linii.</p>
+                            <p class="text-xs mt-1">Klikni na <strong>„+ Přidat linii“</strong> nebo použij <strong>Pomocníka vpravo</strong> pro automatické dopsání.</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = stats.computedLines.map((line, idx) => `
+                    <tr id="line-row-${idx}" class="hover:bg-gray-50/70 transition">
+                        <td class="py-2.5 px-2 text-xs font-bold text-gray-400">${idx + 1}.</td>
+                        <td class="py-2.5 px-2">
+                            <input type="text" value="${escapeHtml(line.name)}"
+                                oninput="updateLineLive(${idx}, 'name', this.value)"
+                                class="editable-input w-full rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-900">
+                        </td>
+                        <td class="py-2.5 px-2">
+                            <select onchange="updateLine(${idx}, 'type', this.value)"
+                                class="editable-input w-full rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-900 cursor-pointer">
+                                <option value="Jednořad" ${line.type === 'Jednořad' ? 'selected' : ''}>Jednořad (1×)</option>
+                                <option value="Dvouřad" ${line.type === 'Dvouřad' ? 'selected' : ''}>Dvouřad (2×)</option>
+                                <option value="Trojřad" ${line.type === 'Trojřad' ? 'selected' : ''}>Trojřad (3×)</option>
+                            </select>
+                        </td>
+                        <td class="py-2.5 px-2">
+                            <input type="number" step="0.5" min="0" value="${line.length || ''}" placeholder="0"
+                                oninput="updateLineLive(${idx}, 'length', this.value)"
+                                class="editable-input w-full rounded-lg px-2.5 py-1.5 text-sm font-bold text-right text-gray-900">
+                        </td>
+                        <td id="cell-eff-len-${idx}" class="py-2.5 px-2 text-right font-semibold text-gray-700 whitespace-nowrap">
+                            ${fmt(line.effectiveRowLength, 1)} m
+                        </td>
+                        <td id="cell-trees-${idx}" class="py-2.5 px-2 text-right font-bold text-forest-800 whitespace-nowrap">
+                            ${line.trees} ks
+                        </td>
+                        <td id="cell-breakdown-${idx}" class="py-2.5 px-2">
+                            ${buildRowBreakdownHtml(line, stats.spacing, idx)}
+                        </td>
+                        <td class="py-2.5 px-1 text-right no-print">
+                            <button onclick="removeLine(${idx})" class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer" title="Smazat linii">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            updateLinesTableSummaryAndBanner(stats);
+        }
+
+        function updateLinesTableComputedCells(stats) {
+            stats.computedLines.forEach((line, idx) => {
+                const effCell = document.getElementById(`cell-eff-len-${idx}`);
+                const treesCell = document.getElementById(`cell-trees-${idx}`);
+                const breakdownCell = document.getElementById(`cell-breakdown-${idx}`);
+
+                if (effCell) effCell.textContent = `${fmt(line.effectiveRowLength, 1)} m`;
+                if (treesCell) treesCell.textContent = `${line.trees} ks`;
+                if (breakdownCell) breakdownCell.innerHTML = buildRowBreakdownHtml(line, stats.spacing, idx);
+            });
+
+            updateLinesTableSummaryAndBanner(stats);
+        }
+
+        function updateLinesTableSummaryAndBanner(stats) {
+            const tfoot = document.getElementById('lines-table-foot');
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="3" class="py-3 px-2 text-gray-700">CELKEM ZA NAVRŽENÉ LINIE (${stats.computedLines.length})</td>
+                    <td class="py-3 px-2 text-right text-gray-700">${fmt(stats.totalPhysicalLength, 1)} m</td>
+                    <td class="py-3 px-2 text-right text-gray-900">${fmt(stats.totalRowLength, 1)} m</td>
+                    <td class="py-3 px-2 text-right ${stats.status === 'over' ? 'text-red-700' : 'text-forest-900'}">${stats.totalTrees.toLocaleString('cs-CZ')} ks</td>
+                    <td colspan="2" class="py-3 px-2 text-xs text-gray-500">Hustota: ${fmt(stats.density, 1)} ks/ha</td>
+                </tr>
+            `;
+
+            const banner = document.getElementById('status-banner');
+            if (stats.status === 'exact') {
+                banner.className = 'mt-4 rounded-xl p-4 border bg-emerald-50 border-emerald-300 text-emerald-950';
+                banner.innerHTML = `
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </span>
+                        <div>
+                            <div class="font-bold text-sm">SPLNĚNO PŘESNĚ NA STROMEK (${stats.totalTrees} / ${stats.requiredTrees} ks • 0 ks rozdíl)</div>
+                            <div class="text-xs text-emerald-800 mt-0.5">
+                                ${stats.allLinesClean
+                                    ? 'Všechny linie zároveň sedí na čistý násobek sponu – každá řada v pásu má stejný počet stromků.'
+                                    : 'Celkový počet stromků sedí přesně. Pokud chceš zarovnat i délky jednotlivých linií na čistý spon bez +1 stromku navíc, klikni na „Automaticky vyrovnat všechny linie na spon a přesný počet stromků“.'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (stats.status === 'over') {
+                banner.className = 'mt-4 rounded-xl p-4 border bg-red-50 border-red-300 text-red-950';
+                banner.innerHTML = `
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">!</span>
+                        <div>
+                            <div class="font-bold text-sm">PŘEKROČENO – MOC STROMŮ (přebývá ${stats.excessTrees} stromů / ${fmt(stats.excessRowLength, 1)} m řad)</div>
+                            <div class="text-xs text-red-800 mt-0.5">
+                                Je třeba ubrat přesně ${stats.excessTrees} ks (${stats.totalTrees} místo ${stats.requiredTrees} ks). Použij zkrácení poslední linie nebo automatické vyrovnání vpravo.
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                banner.className = 'mt-4 rounded-xl p-4 border bg-amber-50 border-amber-200 text-amber-950';
+                banner.innerHTML = `
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 font-bold text-sm mt-0.5">!</span>
+                        <div>
+                            <div class="font-bold text-sm">NESPLNĚNO – chybí ještě ${stats.missingTrees} stromů (${fmt(stats.missingRowLength, 1)} m řad)</div>
+                            <div class="text-xs text-amber-800 mt-0.5">
+                                Do přesného cíle ${stats.requiredTrees} ks zbývá doplnit ${stats.missingTrees} stromků. Využij pomocníka nebo automatické vyrovnání vpravo.
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // =========================================================================
+        // 4. CHYTRÝ POMOCNÍK A AUTOMATICKÉ VYROVNÁNÍ VŠECH ŘAD JEDNÍM KLIKNUTÍM
+        // =========================================================================
+        function renderHelperPanel(block, stats) {
+            const container = document.getElementById('helper-cards');
+            const badgeNum = document.getElementById('helper-badge-num');
+            const titleEl = document.getElementById('helper-title');
+            const subtitleEl = document.getElementById('helper-subtitle');
+
+            // STAV 1: PŘESNĚ SPLNĚNO (diff === 0)
+            if (stats.status === 'exact') {
+                badgeNum.className = 'w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center justify-center';
+                titleEl.textContent = 'Blok je kompletní';
+                subtitleEl.textContent = 'Cílový počet stromků je splněn přesně na 0 ks rozdílu.';
+
+                container.innerHTML = `
+                    <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
+                        <div class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 mb-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div class="font-bold text-emerald-950 text-sm">Přesně ${stats.totalTrees} stromků</div>
+                        <p class="text-xs text-emerald-800 mt-1">
+                            Celková délka všech řad: ${fmt(stats.totalRowLength, 1)} m.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            // STAV 2: PŘEKROČENO – MOC STROMŮ (diff < 0)
+            if (stats.status === 'over') {
+                badgeNum.className = 'w-6 h-6 rounded-lg bg-red-600 text-white text-xs font-bold flex items-center justify-center';
+                titleEl.textContent = 'Pomocník – ubrání přebytku';
+                subtitleEl.textContent = `Přebývá ${stats.excessTrees} stromů (${fmt(stats.excessRowLength, 1)} m řad).`;
+
+                const nonEmptyLines = stats.computedLines
+                    .map((l, idx) => ({ ...l, origIdx: idx }))
+                    .filter(l => l.length > 0);
+                const lastLine = nonEmptyLines[nonEmptyLines.length - 1];
+
+                if (!lastLine) {
+                    container.innerHTML = '';
+                    return;
+                }
+
+                if (lastLine.trees > stats.excessTrees) {
+                    const targetTrees = lastLine.trees - stats.excessTrees;
+                    const newLen = computeExactLineLengthForTrees(targetTrees, lastLine.rows, stats.spacing);
+                    const subMeters = roundMeters(lastLine.length - newLen);
+                    const isClean = (targetTrees % lastLine.rows === 0);
+
+                    container.innerHTML = `
+                        <div class="rounded-xl border border-red-200 bg-red-50/70 p-3.5">
+                            <div class="font-bold text-red-950 text-sm mb-1">Zkrátit poslední linii o přebytek</div>
+                            <p class="text-xs text-red-900 mb-2.5">
+                                <strong>${escapeHtml(lastLine.name)}</strong> (${lastLine.type}): z ${fmtSmart(lastLine.length)} m na <strong>${fmtSmart(newLen)} m</strong> (${targetTrees} ks)
+                                ${isClean ? '<span class="block text-emerald-700 font-semibold mt-0.5">Výsledná délka je čistý násobek sponu.</span>' : '<span class="block text-amber-800 mt-0.5">Pro čistý spon bez +1 stromku použij tlačítko vyrovnání výše.</span>'}
+                            </p>
+                            <button onclick="shortenLastLineTo(${lastLine.origIdx}, ${newLen})"
+                                class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition cursor-pointer">
+                                Zkrátit poslední linii o přebytek (−${fmtSmart(subMeters)} m)
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="rounded-xl border border-red-200 bg-red-50/70 p-3.5 text-xs text-red-900">
+                            <p class="font-bold text-sm mb-1">Poslední linie má jen ${lastLine.trees} ks (přebývá ${stats.excessTrees} ks)</p>
+                            <p>Smaž poslední linii v tabulce vlevo nebo použij <strong>Automaticky vyrovnat všechny linie</strong> nahoře.</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            // STAV 3: NESPLNĚNO – CHYBÍ STROMKY (diff > 0)
+            badgeNum.className = 'w-6 h-6 rounded-lg bg-amber-600 text-white text-xs font-bold flex items-center justify-center';
+            titleEl.textContent = 'Pomocník pro dopočet';
+            subtitleEl.textContent = `Chybí přesně ${stats.missingTrees} stromů (${fmt(stats.missingRowLength, 1)} m řad):`;
+
+            const activeLines = stats.computedLines
+                .map((l, idx) => ({ ...l, origIdx: idx }))
+                .filter(l => l.length > 0);
+            const lastLine = activeLines.length > 0 ? activeLines[activeLines.length - 1] : null;
+
+            const variants = [
+                { type: 'Jednořad', rows: 1, badge: '1 řada' },
+                { type: 'Dvouřad', rows: 2, badge: '2 řady' },
+                { type: 'Trojřad', rows: 3, badge: '3 řady' }
+            ];
+
+            container.innerHTML = variants.map(v => {
+                const exactNewLen = computeExactLineLengthForTrees(stats.missingTrees, v.rows, stats.spacing);
+                const isDivisible = (stats.missingTrees % v.rows === 0);
+                const dist = distributeTreesAcrossRows(stats.missingTrees, v.rows);
+
+                // Výpočet prodloužení poslední linie, pokud má stejný typ nebo obecně poslední linie
+                let extendBtnHtml = '';
+                if (lastLine) {
+                    const combinedTrees = lastLine.trees + stats.missingTrees;
+                    const extendedLen = computeExactLineLengthForTrees(combinedTrees, lastLine.rows, stats.spacing);
+                    const addMeters = roundMeters(extendedLen - lastLine.length);
+                    if (addMeters > 0 && lastLine.type === v.type) {
+                        extendBtnHtml = `
+                            <button onclick="extendLastLineTo(${lastLine.origIdx}, ${extendedLen})"
+                                class="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition cursor-pointer">
+                                Prodloužit poslední linii (+${fmtSmart(addMeters)} m → ${fmtSmart(extendedLen)} m)
+                            </button>
+                        `;
+                    }
+                }
+
+                return `
+                    <div class="rounded-xl border ${isDivisible ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-200 bg-gray-50/70'} p-3.5">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-gray-900 text-sm">${v.type}</span>
+                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-forest-100 text-forest-800">${v.badge}</span>
+                            </div>
+                            ${isDivisible
+                                ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">Čistý spon</span>'
+                                : '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">Nerovnoměrné řady</span>'}
+                        </div>
+
+                        <div class="flex items-baseline justify-between text-xs text-gray-600 mb-2">
+                            <span>Potřebná délka: <strong class="text-base font-extrabold text-forest-900">${fmtSmart(exactNewLen)} m</strong></span>
+                            <span>Řady: <strong>${dist.join(' + ')} ks</strong></span>
+                        </div>
+
+                        <button onclick="appendCalculatedLine('${v.type}', ${exactNewLen})"
+                            class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-forest-800 hover:bg-forest-700 text-white text-xs font-semibold transition cursor-pointer">
+                            Přidat jako novou linii (${fmtSmart(exactNewLen)} m)
+                        </button>
+                        ${extendBtnHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * HLAVNÍ ALGORITMUS: Automaticky vyrovná všechny linie na čistý násobek sponu
+         * A ZÁROVEŇ zajistí přesný součet stromků === requiredTrees (0 ks rozdílu).
+         */
+        function autoBalanceAllLines() {
+            const block = state.blocks[state.activeBlockIndex];
+            const spacing = Math.max(0.1, Number(block.spacing) || 1.0);
+            const requiredTrees = Math.ceil((Math.max(0, Number(block.area) || 0)) * 100 - 1e-9);
+
+            if (requiredTrees <= 0) {
+                showToast('Zadej nejprve kladnou výměru půdního bloku.');
+                return;
+            }
+
+            // Odstraníme nulové prázdné řádky, pokud existují
+            block.lines = block.lines.filter(l => (Number(l.length) || 0) > 0);
+
+            // Pokud uživatel nemá ještě žádnou linii, založíme jeden čistý pás podle dělitelnosti
+            if (block.lines.length === 0) {
+                if (requiredTrees % 3 === 0) {
+                    block.lines.push({ id: uid(), name: 'Linie 1', type: 'Trojřad', length: roundMeters((requiredTrees / 3) * spacing) });
+                } else if (requiredTrees % 2 === 0) {
+                    block.lines.push({ id: uid(), name: 'Linie 1', type: 'Dvouřad', length: roundMeters((requiredTrees / 2) * spacing) });
+                } else {
+                    block.lines.push({ id: uid(), name: 'Linie 1', type: 'Jednořad', length: roundMeters(requiredTrees * spacing) });
+                }
+                renderAll();
+                showToast('Vytvořena linie na čistý spon a přesný počet stromků!');
+                return;
+            }
+
+            // Krok 1: Zarovnat všechny existující linie na nejbližší čistý násobek sponu
+            block.lines.forEach(line => {
+                const units = Math.max(1, Math.round((Number(line.length) || 0) / spacing));
+                line.length = roundMeters(units * spacing);
+            });
+
+            // Pomocná funkce pro aktuální součet stromků
+            const getSumTrees = () => block.lines.reduce((acc, l) => {
+                const r = getRowCount(l.type);
+                return acc + Math.ceil((l.length * r - 1e-9) / spacing);
+            }, 0);
+
+            let rem = requiredTrees - getSumTrees();
+
+            if (rem === 0) {
+                renderAll();
+                showToast('Všechny linie jsou zarovnány na čistý spon a sedí přesně na stromek!');
+                return;
+            }
+
+            // Krok 2: Hledáme existující linii, jejíž počet řad `r` beze zbytku dělí `rem` (rem % r === 0)
+            // Procházíme od konce (poslední linie má přednost)
+            let solvedByExisting = false;
+            for (let i = block.lines.length - 1; i >= 0; i--) {
+                const line = block.lines[i];
+                const r = getRowCount(line.type);
+                if (rem % r === 0) {
+                    const deltaUnits = rem / r; // počet kroků sponu k přidání (+) nebo ubrání (-)
+                    const currentUnits = Math.round(line.length / spacing);
+                    const newUnits = currentUnits + deltaUnits;
+                    if (newUnits >= 1) {
+                        line.length = roundMeters(newUnits * spacing);
+                        solvedByExisting = true;
+                        break;
+                    }
+                }
+            }
+
+            // Krok 3: Pokud žádná existující linie nedělí zbytek (např. máme jen Trojřady a rem = +1, +2, -1, -2):
+            if (!solvedByExisting) {
+                // Pokud je rem záporné (např. -1 nebo -2 u samých trojřadů), ubereme 1 krok sponu z posledního trojřadu (-3 stromky),
+                // čímž se `rem` stane kladným (+2 nebo +1) a doplníme krátký čistý Dvouřad nebo Jednořad!
+                if (rem < 0) {
+                    for (let i = block.lines.length - 1; i >= 0; i--) {
+                        const line = block.lines[i];
+                        const r = getRowCount(line.type);
+                        const currentUnits = Math.round(line.length / spacing);
+                        const stepsNeeded = Math.ceil(Math.abs(rem) / r);
+                        if (currentUnits > stepsNeeded) {
+                            line.length = roundMeters((currentUnits - stepsNeeded) * spacing);
+                            break;
+                        }
+                    }
+                    rem = requiredTrees - getSumTrees();
+                }
+
+                // Nyní je `rem > 0` (např. 1 nebo 2 stromky, nebo jiný zbytek)
+                if (rem > 0) {
+                    if (rem % 3 === 0) {
+                        block.lines.push({
+                            id: uid(),
+                            name: `Linie ${block.lines.length + 1}`,
+                            type: 'Trojřad',
+                            length: roundMeters((rem / 3) * spacing)
+                        });
+                    } else if (rem % 2 === 0) {
+                        block.lines.push({
+                            id: uid(),
+                            name: `Linie ${block.lines.length + 1}`,
+                            type: 'Dvouřad',
+                            length: roundMeters((rem / 2) * spacing)
+                        });
+                    } else {
+                        block.lines.push({
+                            id: uid(),
+                            name: `Linie ${block.lines.length + 1}`,
+                            type: 'Jednořad',
+                            length: roundMeters(rem * spacing)
+                        });
+                    }
+                }
+            }
+
+            renderAll();
+            showToast('Hotovo! Všechny linie sedí na čistý spon i přesný počet stromků (0 ks rozdíl).');
+        }
+
+        // =========================================================================
+        // 5. MĚŘÍTKOVÁ VIZUALIZACE ŘAD (HTML5 CANVAS)
+        // =========================================================================
+        function renderCanvasSchema(block, stats) {
+            const canvas = document.getElementById('als-schema-canvas');
+            const emptyState = document.getElementById('schema-empty-state');
+            const activeLines = stats.computedLines.filter(l => l.length > 0);
+
+            if (activeLines.length === 0) {
+                canvas.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+
+            canvas.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            // Maximální fyzická délka na bloku (včetně případného +1 stromku v nerovnoměrné řadě)
+            const maxPhysicalMeters = Math.max(...activeLines.map(l => {
+                const maxRowTrees = Math.max(...l.rowTrees);
+                return Math.max(l.length, maxRowTrees * stats.spacing);
+            }));
+
+            const logicalWidth = 980;
+            const leftColWidth = 185;
+            const rightBadgeSpace = 132;
+            const maxBarWidth = logicalWidth - leftColWidth - rightBadgeSpace - 18;
+
+            // Jednotné měřítko px/m pro VŠECHNY linie a řady bloku
+            const pxPerMeter = maxBarWidth / maxPhysicalMeters;
+
+            const rowGap = 24;
+            const blockPaddingY = 24;
+            const topMargin = 40;
+            const bottomMargin = 34;
+
+            let currentY = topMargin;
+            const lineLayouts = activeLines.map(line => {
+                const lineHeight = Math.max(38, (line.rows - 1) * rowGap + 26);
+                const scalePct = Math.round((line.length / maxPhysicalMeters) * 100);
+                const layout = { line, yStart: currentY, height: lineHeight, scalePct };
+                currentY += lineHeight + blockPaddingY;
+                return layout;
+            });
+
+            const logicalHeight = currentY - blockPaddingY + bottomMargin;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+            canvas.width = logicalWidth * dpr;
+            canvas.height = logicalHeight * dpr;
+            canvas.style.height = `${logicalHeight}px`;
+
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            // Podklad plátna
+            ctx.fillStyle = '#FAFDFB';
+            drawRoundedRect(ctx, 0, 0, logicalWidth, logicalHeight, 10);
+            ctx.fill();
+
+            // Titulek
+            ctx.font = '700 11px Inter, sans-serif';
+            ctx.fillStyle = '#2C4A3E';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(`${block.name} • Spon ${fmtSmart(stats.spacing)} m`, 10, 17);
+
+            // Měřítková osa nahoře
+            const halfLen = maxPhysicalMeters / 2;
+            const rulerMarks = [
+                { x: leftColWidth, label: '0 m', align: 'left', color: '#6B7280', weight: '600', stroke: '#E5E7EB' },
+                { x: leftColWidth + maxBarWidth / 2, label: `${fmtSmart(halfLen)} m (50 %)`, align: 'center', color: '#6B7280', weight: '600', stroke: '#E5E7EB' },
+                { x: leftColWidth + maxBarWidth, label: `Max: ${fmtSmart(maxPhysicalMeters)} m (100 %)`, align: 'right', color: '#2C4A3E', weight: '700', stroke: '#D1D5DB' }
+            ];
+
+            rulerMarks.forEach(rm => {
+                ctx.font = `${rm.weight} 11px Inter, sans-serif`;
+                ctx.fillStyle = rm.color;
+                ctx.textAlign = rm.align;
+                ctx.fillText(rm.label, rm.x, 17);
+
+                ctx.save();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = rm.stroke;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(rm.x, 23);
+                ctx.lineTo(rm.x, logicalHeight - 18);
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            // Vykreslení každé linie a jejích jednotlivých řad
+            lineLayouts.forEach(({ line, yStart, height, scalePct }) => {
+                const centerY = yStart + height / 2;
+                const firstRowY = centerY - ((line.rows - 1) * rowGap) / 2;
+
+                const maxInLine = Math.max(...line.rowTrees);
+                const minInLine = Math.min(...line.rowTrees);
+                const corridorWidth = Math.max(14, maxInLine * stats.spacing * pxPerMeter);
+
+                // Podbarvení pásu ALS
+                ctx.fillStyle = 'rgba(232, 240, 236, 0.72)';
+                ctx.strokeStyle = '#B7CEC2';
+                ctx.lineWidth = 1;
+                drawRoundedRect(ctx, leftColWidth - 6, yStart - 4, corridorWidth + 12, height + 8, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // Popisek linie vlevo
+                ctx.textAlign = 'left';
+                ctx.font = '700 13px Inter, sans-serif';
+                ctx.fillStyle = '#1F2937';
+                ctx.fillText(line.name, 10, centerY - 4);
+
+                ctx.font = '500 11px Inter, sans-serif';
+                ctx.fillStyle = '#4B5563';
+                ctx.fillText(`${line.type} • ${fmtSmart(line.length)} m (${scalePct} %)`, 10, centerY + 12);
+
+                // Jednotlivé řady (1, 2 nebo 3)
+                line.rowTrees.forEach((treesInRow, rIdx) => {
+                    const rowY = firstRowY + rIdx * rowGap;
+                    const isExtraTree = line.hasUnevenRows && treesInRow === maxInLine && maxInLine > minInLine;
+                    const rowStroke = isExtraTree ? '#B45309' : '#2C4A3E';
+                    const badgeFill = isExtraTree ? '#F59E0B' : '#2C4A3E';
+                    const badgeText = isExtraTree ? `Řada ${rIdx + 1}: ${treesInRow} ks (+1)` : `Řada ${rIdx + 1}: ${treesInRow} ks`;
+                    const badgeWidth = isExtraTree ? 116 : 98;
+
+                    const actualRowMeters = treesInRow * stats.spacing;
+                    const rowEndX = leftColWidth + actualRowMeters * pxPerMeter;
+
+                    // Čára řady
+                    ctx.strokeStyle = rowStroke;
+                    ctx.lineWidth = 6;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(leftColWidth, rowY);
+                    ctx.lineTo(rowEndX, rowY);
+                    ctx.stroke();
+
+                    // Reálné tečky (stromky) na jejich přesné metrové souřadnici
+                    const stepPx = stats.spacing * pxPerMeter;
+                    const dotRadius = stepPx < 3.5 ? 1.05 : (stepPx < 6 ? 1.45 : 2.1);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+                    for (let t = 0; t < treesInRow; t++) {
+                        const dotX = leftColWidth + (t + 0.5) * stepPx;
+                        ctx.beginPath();
+                        ctx.arc(dotX, rowY, dotRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Štítek s počtem stromků za každou jednotlivou čárou
+                    const badgeX = rowEndX + 10;
+                    const badgeY = rowY - 9.5;
+                    ctx.fillStyle = badgeFill;
+                    drawRoundedRect(ctx, badgeX, badgeY, badgeWidth, 19, 5);
+                    ctx.fill();
+
+                    ctx.font = '700 10.5px Inter, sans-serif';
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(badgeText, badgeX + badgeWidth / 2, rowY + 3.5);
+                });
+            });
+
+            // Spodní měřítkové pravítko
+            const scaleBarMeters = maxPhysicalMeters <= 50 ? 10 : (maxPhysicalMeters <= 120 ? 25 : 50);
+            const scaleBarPx = scaleBarMeters * pxPerMeter;
+            const footerY = logicalHeight - 12;
+
+            ctx.strokeStyle = '#2C4A3E';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'butt';
+            ctx.beginPath();
+            ctx.moveTo(leftColWidth, footerY);
+            ctx.lineTo(leftColWidth + scaleBarPx, footerY);
+            ctx.moveTo(leftColWidth, footerY - 4);
+            ctx.lineTo(leftColWidth, footerY + 4);
+            ctx.moveTo(leftColWidth + scaleBarPx, footerY - 4);
+            ctx.lineTo(leftColWidth + scaleBarPx, footerY + 4);
+            ctx.stroke();
+
+            ctx.font = '600 10.5px Inter, sans-serif';
+            ctx.fillStyle = '#2C4A3E';
+            ctx.textAlign = 'left';
+            ctx.fillText(
+                `Měřítko: ${scaleBarMeters} m (${Math.round(scaleBarMeters / stats.spacing)} stromků v řadě)`,
+                leftColWidth + scaleBarPx + 8,
+                footerY + 3.5
+            );
+
+            ctx.restore();
+        }
+
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            const rad = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + rad, y);
+            ctx.arcTo(x + w, y, x + w, y + h, rad);
+            ctx.arcTo(x + w, y + h, x, y + h, rad);
+            ctx.arcTo(x, y + h, x, y, rad);
+            ctx.arcTo(x, y, x + w, y, rad);
+            ctx.closePath();
+        }
+
+        // =========================================================================
+        // 6. OVLÁDACÍ AKCE A EXPORTY
+        // =========================================================================
+        function uid() {
+            return 'line-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+        }
+
+        function selectBlock(idx) {
+            state.activeBlockIndex = idx;
+            renderAll();
+        }
+
+        function updateBlockMeta(field, value) {
+            const block = state.blocks[state.activeBlockIndex];
+            if (field === 'name') {
+                block.name = value;
+            } else if (field === 'area') {
+                block.area = Math.max(0.01, parseFloat(value) || 0);
+            } else if (field === 'spacing') {
+                block.spacing = Math.max(0.1, parseFloat(value) || 0.1);
+            }
+            renderAll();
+        }
+
+        function addNewLine(type = 'Trojřad', length = 0) {
+            const block = state.blocks[state.activeBlockIndex];
+            block.lines.push({
+                id: uid(),
+                name: `Linie ${block.lines.length + 1}`,
+                type: type,
+                length: length
+            });
+            renderAll();
+        }
+
+        function appendCalculatedLine(type, length) {
+            addNewLine(type, length);
+            showToast(`Přidána linie: ${type} (${fmtSmart(length)} m)`);
+        }
+
+        function extendLastLineTo(lineIdx, newLength) {
+            const block = state.blocks[state.activeBlockIndex];
+            if (block.lines[lineIdx]) {
+                block.lines[lineIdx].length = newLength;
+                renderAll();
+                showToast(`Poslední linie prodloužena na ${fmtSmart(newLength)} m.`);
+            }
+        }
+
+        function shortenLastLineTo(lineIdx, newLength) {
+            const block = state.blocks[state.activeBlockIndex];
+            if (block.lines[lineIdx]) {
+                block.lines[lineIdx].length = newLength;
+                renderAll();
+                showToast(`Poslední linie zkrácena na ${fmtSmart(newLength)} m.`);
+            }
+        }
+
+        function alignSingleLineToSpacing(lineIdx, targetLength) {
+            const block = state.blocks[state.activeBlockIndex];
+            if (block.lines[lineIdx]) {
+                block.lines[lineIdx].length = targetLength;
+                renderAll();
+                showToast(`Délka linie zarovnána na ${fmtSmart(targetLength)} m.`);
+            }
+        }
+
+        function updateLineLive(lineIdx, field, value) {
+            const block = state.blocks[state.activeBlockIndex];
+            const line = block.lines[lineIdx];
+            if (!line) return;
+
+            if (field === 'name') {
+                line.name = value;
+            } else if (field === 'length') {
+                const parsed = parseFloat(String(value).replace(',', '.'));
+                line.length = isNaN(parsed) ? 0 : Math.max(0, parsed);
+            }
+            renderLiveUpdatesOnly();
+        }
+
+        function updateLine(lineIdx, field, value) {
+            const block = state.blocks[state.activeBlockIndex];
+            const line = block.lines[lineIdx];
+            if (!line) return;
+
+            if (field === 'type') {
+                line.type = value;
+            }
+            renderAll();
+        }
+
+        function removeLine(lineIdx) {
+            const block = state.blocks[state.activeBlockIndex];
+            if (lineIdx >= 0 && lineIdx < block.lines.length) {
+                block.lines.splice(lineIdx, 1);
+                renderAll();
+                showToast('Linie byla odstraněna.');
+            }
+        }
+
+        function downloadSchemaPNG() {
+            const canvas = document.getElementById('als-schema-canvas');
+            const activeBlock = state.blocks[state.activeBlockIndex];
+            const hasActiveLines = activeBlock.lines.some(l => (Number(l.length) || 0) > 0);
+
+            if (!canvas || !hasActiveLines) {
+                showToast('Nejprve zadej alespoň jednu linii s délkou.');
+                return;
+            }
+
+            const pngUrl = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            const safeName = activeBlock.name.toLowerCase().replace(/[^a-z0-9]+/gi, '_');
+            a.href = pngUrl;
+            a.download = `schema_ALS_${safeName}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast('Schéma bylo staženo jako obrázek PNG.');
+        }
+
+        function exportAllToXlsx() {
+            if (typeof XLSX === 'undefined') {
+                showToast('Knihovna pro export do Excelu se nenačetla.');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            state.blocks.forEach(block => {
+                const s = calculateBlockStats(block);
+                const rows = [
+                    ['KALKULAČKA A PLÁNOVAČ ALS – PŮDNÍ BLOK'],
+                    ['Název bloku', block.name],
+                    ['Výměra bloku (ha)', block.area],
+                    ['Spon stromů v řadě (m)', block.spacing],
+                    ['Přesný nutný počet stromů (100 ks/ha)', s.requiredTrees],
+                    ['Nutná délka všech jednotlivých řad celkem (m)', s.requiredRowLength],
+                    [],
+                    ['Č.', 'Označení linie', 'Uspořádání', 'Počet řad', 'Délka v poli (m)', 'Délka řad celkem (m)', 'Stromků celkem (ks)', 'Rozpis stromků po řadách']
+                ];
+
+                s.computedLines.forEach((l, i) => {
+                    rows.push([
+                        i + 1,
+                        l.name,
+                        l.type,
+                        l.rows,
+                        l.length,
+                        l.effectiveRowLength,
+                        l.trees,
+                        l.rowTrees.join(' + ') + ' ks'
+                    ]);
+                });
+
+                rows.push([]);
+                rows.push([
+                    'CELKEM',
+                    '',
+                    '',
+                    '',
+                    s.totalPhysicalLength,
+                    s.totalRowLength,
+                    s.totalTrees,
+                    s.status === 'exact'
+                        ? 'SPLNĚNO PŘESNĚ'
+                        : (s.status === 'over' ? `PŘEKROČENO O +${s.excessTrees} ks` : `CHYBÍ ${s.missingTrees} ks`)
+                ]);
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [{ wch: 6 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 24 }];
+                const sheetName = block.name.replace(/[:\\/?*\[\]]/g, '').slice(0, 31) || `Blok ${block.id}`;
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            });
+
+            XLSX.writeFile(wb, 'Planovac_ALS_10_bloku.xlsx');
+            showToast('Excelový soubor (.xlsx) pro všech 10 bloků byl stažen.');
+        }
+
+        function openResetModal() {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function executeReset() {
+            localStorage.removeItem(STORAGE_KEY);
+            state = {
+                activeBlockIndex: 3,
+                blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS))
+            };
+            closeResetModal();
+            renderAll();
+            showToast('Všech 10 bloků bylo obnoveno do výchozího nastavení.');
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-forest-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg border border-forest-700 flex items-center gap-2 transition-opacity duration-300';
+            toast.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>${escapeHtml(message)}</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderAll();
+        });
+    </script>
+</body>
+</html>
