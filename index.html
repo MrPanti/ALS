@@ -70,7 +70,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m0-18c-3.5 2-6 5.5-6 9.5 0 2.5 2.5 4.5 6 4.5m0-14c3.5 2 6 5.5 6 9.5 0 2.5-2.5 4.5-6 4.5" />
                         </svg>
                     </span>
-                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Kalkulačka a plánovač ALS – 10 půdních bloků</h1>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Kalkulačka a vizuální plánovač ALS – 10 půdních bloků</h1>
                 </div>
                 <p class="text-forest-100 text-xs sm:text-sm mt-1">
                     Přesný výpočet na stromek (100 ks/ha), automatické vyrovnání zbytků na čistý spon a měřítkové schéma řad
@@ -78,6 +78,12 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                <button onclick="downloadSchemaPNG()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-700 hover:bg-forest-600 text-white text-xs sm:text-sm font-medium border border-forest-600 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Schéma (PNG)
+                </button>
                 <button onclick="exportAllToXlsx()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-700 hover:bg-forest-600 text-white text-xs sm:text-sm font-medium border border-forest-600 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -90,11 +96,11 @@
                     </svg>
                     Tisk / PDF
                 </button>
-                <button onclick="openResetModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-900/60 hover:bg-red-900/70 text-forest-100 hover:text-white text-xs sm:text-sm font-medium transition cursor-pointer" title="Obnovit výchozí nastavení všech bloků">
+                <button onclick="openResetModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-900/60 hover:bg-red-900/70 text-forest-100 hover:text-white text-xs sm:text-sm font-medium transition cursor-pointer" title="Obnovit výchozí rozvržení všech bloků">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Reset
+                    Obnovit výchozí rozvržení
                 </button>
             </div>
         </div>
@@ -246,7 +252,7 @@
                     <span>Rovnoměrný počet stromků</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[11px]">Řada 1: 41 ks (+1)</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-[#c05621] text-white font-bold text-[11px]">Řada 1: 41 ks (+1)</span>
                     <span>Řada o 1 stromek (1 spon) delší než sousední řada v pásu</span>
                 </div>
             </div>
@@ -340,37 +346,72 @@
 
     <script>
         // =========================================================================
-        // 1. VÝCHOZÍ DATA PRO 10 PŮDNÍCH BLOKŮ
+        // 1. FINÁLNÍ VÝCHOZÍ DATA PRO 10 PŮDNÍCH BLOKŮ (Z PDF A XLSX)
         // =========================================================================
-        const STORAGE_KEY = 'als_visual_planner_v2';
+        const STORAGE_KEY = 'als_planner_v2_final';
 
         const DEFAULT_BLOCKS = [
-            { id: 1, name: 'Neuslužice vrch', area: 1.89, spacing: 2.0, lines: [] },
-            { id: 2, name: 'Neuslužice 2802,4', area: 0.81, spacing: 2.0, lines: [] },
-            { id: 3, name: 'Nad úvozem', area: 0.97, spacing: 1.0, lines: [] },
+            {
+                id: 1,
+                name: 'Neuslužice vrch',
+                area: 1.91,
+                spacing: 1.4,
+                lines: [
+                    { id: 'l1-1', name: 'Linie 1', type: 'Trojřad', length: 89 }
+                ]
+            },
+            {
+                id: 2,
+                name: 'Neuslužice 2802,4',
+                area: 0.81,
+                spacing: 2.0,
+                lines: []
+            },
+            {
+                id: 3,
+                name: 'Nad úvozem',
+                area: 1.09,
+                spacing: 1.4,
+                lines: [
+                    { id: 'l3-1', name: 'Linie 1', type: 'Trojřad', length: 50.5 }
+                ]
+            },
             {
                 id: 4,
                 name: 'U nového nádraží',
-                area: 12.24,
-                spacing: 1.5,
+                area: 12.42,
+                spacing: 1.4,
                 lines: [
-                    { id: 'l4-1', name: 'Linie 1', type: 'Trojřad', length: 82 },
-                    { id: 'l4-2', name: 'Linie 2', type: 'Trojřad', length: 200 },
-                    { id: 'l4-3', name: 'Linie 3', type: 'Trojřad', length: 160 },
-                    { id: 'l4-4', name: 'Linie 4', type: 'Trojřad', length: 70 },
-                    { id: 'l4-5', name: 'Linie 5', type: 'Trojřad', length: 100 }
+                    { id: 'l4-1', name: 'Linie 1', type: 'Trojřad', length: 161 },
+                    { id: 'l4-2', name: 'Linie 2', type: 'Trojřad', length: 89.6 },
+                    { id: 'l4-3', name: 'Linie 3', type: 'Trojřad', length: 299.6 },
+                    { id: 'l4-4', name: 'Linie 4', type: 'Trojřad', length: 29.4 }
                 ]
             },
-            { id: 5, name: 'Za pilou', area: 4.44, spacing: 2.0, lines: [] },
-            { id: 6, name: 'Před barákem', area: 4.91, spacing: 1.5, lines: [] },
-            { id: 7, name: 'Blok 7', area: 5.00, spacing: 4.0, lines: [] },
-            { id: 8, name: 'Blok 8', area: 5.00, spacing: 4.0, lines: [] },
-            { id: 9, name: 'Blok 9', area: 5.00, spacing: 4.0, lines: [] },
-            { id: 10, name: 'Blok 10', area: 5.00, spacing: 4.0, lines: [] }
+            {
+                id: 5,
+                name: 'Za pilou',
+                area: 4.45,
+                spacing: 1.4,
+                lines: [
+                    { id: 'l5-1', name: 'Linie 1', type: 'Trojřad', length: 207.5 }
+                ]
+            },
+            {
+                id: 6,
+                name: 'Před barákem',
+                area: 4.91,
+                spacing: 1.5,
+                lines: []
+            },
+            { id: 7, name: 'Blok 7', area: 5.0, spacing: 4.0, lines: [] },
+            { id: 8, name: 'Blok 8', area: 5.0, spacing: 4.0, lines: [] },
+            { id: 9, name: 'Blok 9', area: 5.0, spacing: 4.0, lines: [] },
+            { id: 10, name: 'Blok 10', area: 5.0, spacing: 4.0, lines: [] }
         ];
 
         let state = {
-            activeBlockIndex: 3,
+            activeBlockIndex: 3, // Výchozí otevřený blok: U nového nádraží
             blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS))
         };
 
@@ -400,8 +441,8 @@
         // 2. MATEMATICKÉ FUNKCE A KONTROLA KOMPATIBILITY SE SPONEM
         // =========================================================================
         function getRowCount(type) {
-            if (type === 'Trojřad') return 3;
-            if (type === 'Dvouřad') return 2;
+            if (type === 'Trojřad' || type === 3) return 3;
+            if (type === 'Dvouřad' || type === 2) return 2;
             return 1;
         }
 
@@ -416,22 +457,27 @@
             return res;
         }
 
-        function isLengthCompatibleWithSpacing(length, spacing) {
+        function isLengthCompatibleWithSpacing(length, spacing, remainder = 0) {
             if (length <= 0 || spacing <= 0) return true;
-            const nearest = Math.round(length / spacing) * spacing;
-            return Math.abs(length - nearest) < 0.001;
+            if (remainder !== 0) return false;
+            const ratio = length / spacing;
+            return Math.abs(ratio - Math.round(ratio)) < 1e-4;
         }
 
         function roundMeters(val) {
             return Math.round((val + Number.EPSILON) * 100) / 100;
         }
 
+        function roundToOneDecimal(val) {
+            return Math.round((val + Number.EPSILON) * 10) / 10;
+        }
+
         function calculateBlockStats(block) {
             const area = Math.max(0, Number(block.area) || 0);
             const spacing = Math.max(0.1, Number(block.spacing) || 1.0);
 
-            const requiredTrees = Math.ceil(area * 100 - 1e-9);
-            const requiredRowLength = roundMeters(requiredTrees * spacing);
+            const requiredTrees = Math.round(area * 100);
+            const requiredRowLength = roundToOneDecimal(requiredTrees * spacing);
 
             let totalPhysicalLength = 0;
             let totalRowLength = 0;
@@ -440,10 +486,11 @@
             const computedLines = block.lines.map((line, idx) => {
                 const rows = getRowCount(line.type);
                 const len = Math.max(0, Number(line.length) || 0);
-                const effectiveRowLength = roundMeters(len * rows);
-                const trees = len > 0 ? Math.ceil((effectiveRowLength - 1e-9) / spacing) : 0;
+                const effectiveRowLength = roundToOneDecimal(len * rows);
+                const trees = len > 0 ? Math.round((len * rows) / spacing + 1e-9) : 0;
                 const rowTrees = distributeTreesAcrossRows(trees, rows);
-                const compatible = isLengthCompatibleWithSpacing(len, spacing);
+                const rem = trees % rows;
+                const compatible = isLengthCompatibleWithSpacing(len, spacing, rem);
 
                 // Nejbližší čistý násobek sponu
                 const nearestUnits = Math.max(1, Math.round(len / spacing));
@@ -468,13 +515,13 @@
             });
 
             totalPhysicalLength = roundMeters(totalPhysicalLength);
-            totalRowLength = roundMeters(totalRowLength);
+            totalRowLength = roundToOneDecimal(totalRowLength);
 
             const diff = requiredTrees - totalTrees; // > 0 chybí stromky, < 0 přebývají stromky, === 0 přesně
             const missingTrees = Math.max(0, diff);
             const excessTrees = Math.max(0, -diff);
-            const missingRowLength = roundMeters(missingTrees * spacing);
-            const excessRowLength = roundMeters(excessTrees * spacing);
+            const missingRowLength = roundToOneDecimal(missingTrees * spacing);
+            const excessRowLength = roundToOneDecimal(excessTrees * spacing);
 
             let status = 'under';
             if (diff === 0 && requiredTrees > 0) status = 'exact';
@@ -506,12 +553,12 @@
             if (desiredTrees <= 0) return 0;
             const rawLen = (desiredTrees * spacing) / rows;
             const rounded1 = Math.round(rawLen * 10) / 10;
-            if (rounded1 > 0 && Math.ceil((rounded1 * rows - 1e-9) / spacing) === desiredTrees) {
+            if (rounded1 > 0 && Math.round((rounded1 * rows) / spacing + 1e-9) === desiredTrees) {
                 return rounded1;
             }
-            const ceil1 = Math.ceil((rawLen - 1e-9) * 10) / 10;
-            if (ceil1 > 0 && Math.ceil((ceil1 * rows - 1e-9) / spacing) === desiredTrees) {
-                return ceil1;
+            const rounded2 = Math.round(rawLen * 100) / 100;
+            if (rounded2 > 0 && Math.round((rounded2 * rows) / spacing + 1e-9) === desiredTrees) {
+                return rounded2;
             }
             return Math.ceil((rawLen - 1e-9) * 100) / 100;
         }
@@ -575,7 +622,10 @@
                 let dot = '<span class="w-2 h-2 rounded-full bg-gray-400/70"></span>';
                 if (block.lines.length > 0) {
                     if (s.status === 'exact') {
-                        dot = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>';
+                        dot = '<span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 text-[9px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>OK</span>';
+                        if (!isActive) {
+                            dot = '<span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-400/25 text-emerald-200 text-[9px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>OK</span>';
+                        }
                     } else if (s.status === 'over') {
                         dot = '<span class="w-2 h-2 rounded-full bg-red-400"></span>';
                     } else {
@@ -591,7 +641,7 @@
                                 : 'bg-forest-800/70 hover:bg-forest-700/80 text-forest-100 border-forest-700/50 font-medium'
                         }">
                         <div class="flex items-center justify-between w-full gap-1">
-                            <span class="text-[10px] uppercase tracking-wider opacity-75">Blok ${block.id}</span>
+                            <span class="text-[10px] uppercase tracking-wider opacity-75">Blok ${block.id} (${fmtSmart(block.area)} ha)</span>
                             ${dot}
                         </div>
                         <span class="text-xs truncate w-full mt-0.5">${escapeHtml(block.name)}</span>
@@ -954,7 +1004,7 @@
         function autoBalanceAllLines() {
             const block = state.blocks[state.activeBlockIndex];
             const spacing = Math.max(0.1, Number(block.spacing) || 1.0);
-            const requiredTrees = Math.ceil((Math.max(0, Number(block.area) || 0)) * 100 - 1e-9);
+            const requiredTrees = Math.round((Math.max(0, Number(block.area) || 0)) * 100);
 
             if (requiredTrees <= 0) {
                 showToast('Zadej nejprve kladnou výměru půdního bloku.');
@@ -987,7 +1037,7 @@
             // Pomocná funkce pro aktuální součet stromků
             const getSumTrees = () => block.lines.reduce((acc, l) => {
                 const r = getRowCount(l.type);
-                return acc + Math.ceil((l.length * r - 1e-9) / spacing);
+                return acc + Math.round((l.length * r) / spacing + 1e-9);
             }, 0);
 
             let rem = requiredTrees - getSumTrees();
@@ -1191,8 +1241,8 @@
                 line.rowTrees.forEach((treesInRow, rIdx) => {
                     const rowY = firstRowY + rIdx * rowGap;
                     const isExtraTree = line.hasUnevenRows && treesInRow === maxInLine && maxInLine > minInLine;
-                    const rowStroke = isExtraTree ? '#B45309' : '#2C4A3E';
-                    const badgeFill = isExtraTree ? '#F59E0B' : '#2C4A3E';
+                    const rowStroke = isExtraTree ? '#c05621' : '#2C4A3E';
+                    const badgeFill = isExtraTree ? '#c05621' : '#2C4A3E';
                     const badgeText = isExtraTree ? `Řada ${rIdx + 1}: ${treesInRow} ks (+1)` : `Řada ${rIdx + 1}: ${treesInRow} ks`;
                     const badgeWidth = isExtraTree ? 116 : 98;
 
